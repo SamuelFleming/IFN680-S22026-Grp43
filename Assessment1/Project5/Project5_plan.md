@@ -22,18 +22,22 @@ Extend the Week 7 **addition Transformer** into a controlled Forward-vs-Reverse 
 
 | Component | Source | Project 5 change |
 | --- | --- | --- |
+| Shared plumbing | `project5_common.py` | Single canonical copy used by Forward, Reverse, and later `main_report` |
 | Tokenizer, PE, causal Transformer, `generate()`, padding/batching, AdamW, teacher-forced CE training | Week 7 tutorial (`IFN680_Week7_Tutorial-Solution`) | Keep unless subtraction/reverse requires a change |
 | Vocab `-` token | Task 1 | Operator + negative sign |
-| Balanced `+`/`-` synthetic data, train/val/test | Task 1 | Tutorial was addition-only |
+| Balanced `+`/`-` synthetic data, train/val/test | Task 1 | Tutorial was addition-only; persist via `project5_splits.pkl` |
 | Carry helpers | Tutorial | Keep |
 | Borrow helpers | Task 1 | Extension for subtraction |
+| Target transforms | `forward_target` / `reverse_target` in common | Only intentional Forward vs Reverse difference |
 | Forward training + checkpoint | Task 1 → `LLMForward.ipynb` / `.pth` | Done — treat as fixed baseline |
-| Answer reversal + restore-on-decode | Task 2 → `LLMReverse.ipynb` / `.pth` | **Next** |
-| Shared test set | Task 1 artefact | Reuse `project5_test.pkl` for Reverse + Task 3 |
+| Answer reversal + restore-on-decode | Task 2 → `LLMReverse.ipynb` / `.pth` | In progress (§3.4 / §7 verified next) |
+| Shared test set | Task 1 artefact | Reuse `project5_test.pkl` (+ full splits) for Reverse + Task 3 |
 | Formal comparison (no training) | Task 3 → `main_report.ipynb` | Pending |
 | 2-page PDF | Submission | Method + analysis only |
 
 **Rule:** If the brief does not require a change, prefer the Week 7 implementation so Forward vs Reverse stays a fair comparison.
+
+**Shared module rule:** Notebooks keep mode definition, training loop, restore-on-decode, plots, and narrative visible. Duplicate Transformer / tokenizer / eval plumbing must not exist.
 
 ---
 
@@ -41,12 +45,14 @@ Extend the Week 7 **addition Transformer** into a controlled Forward-vs-Reverse 
 
 ```text
 project5_code.zip
+|-- project5_common.py    # shared tokenizer/model/data/eval plumbing
 |-- LLMForward.ipynb      # Task 1 train + Forward diagnostics
 |-- LLMReverse.ipynb      # Task 2 train + Reverse diagnostics
 |-- main_report.ipynb     # Task 3 eval/plots only (NO training loop)
 |-- LLMForward.pth
 |-- LLMReverse.pth
-|-- project5_test.pkl     # shared ≥10k held-out set
+|-- project5_splits.pkl   # shared train/val/test (preferred)
+|-- project5_test.pkl     # shared ≥10k held-out set (also required)
 `-- any other files strictly needed to reproduce results
 ```
 
