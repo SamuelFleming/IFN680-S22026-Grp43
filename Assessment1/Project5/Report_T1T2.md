@@ -1,8 +1,7 @@
 # IFN680 Project 5 — Written Report Draft (Tasks 1–2 + preliminary Task 3)
 
 **Status:** working draft for the ≤2-page PDF.  
-**Sources:** exported `project5_code/LLMForward.ipynb` (Task 1) and `project5_code/LLMReverse.ipynb` (Task 2).  
-**Update (Option A):** `LLMForward.ipynb` now matches Reverse’s budget — initial 20 epochs + 5 continuation (total 25), best validation checkpoint kept. Re-run §9.2–§12 on the IFN680 host, then refresh the numeric tables below. Until that re-export, tabulated Forward numbers are still the prior 20-epoch run.
+**Sources:** exported `project5_code/LLMForward.ipynb` (Task 1) and `project5_code/LLMReverse.ipynb` (Task 2), after matched 25-epoch training.
 
 ---
 
@@ -18,19 +17,19 @@ Both modes use the same tutorial-aligned stack: character vocabulary {0–9, +, 
 
 ### Task 1 — Forward addition and subtraction
 
-Forward mode retains normal answer order. Relative to the addition-only tutorial, the necessary changes were: (i) adding `-` to the vocabulary for the subtraction operator and for negative answer signs; (ii) generating balanced addition and subtraction data with operands in 0–999; (iii) decoding leading `-` in generated answers; and (iv) monitoring convergence on a validation set, because subtraction increases task difficulty. No change to Transformer architecture was required. The Forward model was trained for up to 20 epochs; the best validation checkpoint occurred at epoch 19 (validation sequence accuracy 97.64%).
+Forward mode retains normal answer order. Relative to the addition-only tutorial, the necessary changes were: (i) adding `-` to the vocabulary for the subtraction operator and for negative answer signs; (ii) generating balanced addition and subtraction data with operands in 0–999; (iii) decoding leading `-` in generated answers; and (iv) monitoring convergence on a validation set, because subtraction increases task difficulty. No change to Transformer architecture was required. Under the matched budget below, the selected Forward checkpoint is epoch 24 (validation sequence accuracy 97.97%).
 
 ### Task 2 — Reverse prediction
 
-Reverse mode uses identical problems, tokenizer, architecture, optimiser and splits. The sole intentional change is target representation: before tokenisation, each answer string is reversed in full, including a leading minus when present (e.g. `31 → 13`, `-337 → 733-`). Training therefore asks the model to emit the units digit before higher places. At inference, generated text is reversed again before integer parsing, which restores conventional numeric form. This keeps Forward vs Reverse a controlled comparison on prediction direction rather than on data or model capacity.
+Reverse mode uses identical problems, tokenizer, architecture, optimiser and splits. The sole intentional change is target representation: before tokenisation, each answer string is reversed in full, including a leading minus when present (e.g. `31 → 13`, `-337 → 733-`). Training therefore asks the model to emit the units digit before higher places. At inference, generated text is reversed again before integer parsing, which restores conventional numeric form. This keeps Forward vs Reverse a controlled comparison on prediction direction rather than on data or model capacity. The selected Reverse checkpoint is epoch 21 (validation sequence accuracy 99.60%).
 
 ### Training budget
 
-Both modes use the same schedule: up to **25** epochs (20 + 5 continuation) with checkpoint selection by validation complete-sequence accuracy. Reverse’s selected checkpoint was epoch 23 (val sequence accuracy 99.37%). Forward’s selected epoch after Option A continuation should be recorded from the re-run (§9.2 / §10 outputs) before finalising the PDF.
+Both modes use the same schedule: up to **25** epochs (20 + 5 continuation) with checkpoint selection by validation complete-sequence accuracy across the full run. Forward’s best checkpoint is epoch 24 (val sequence 97.97%); Reverse’s is epoch 21 (val sequence 99.60%).
 
 ---
 
-## Results and analysis (current artefacts)
+## Results and analysis
 
 All percentages below are **exact numeric accuracy** on the shared 10,000-example held-out test set unless stated otherwise. Both models exceed the assessment’s general 78% expectation.
 
@@ -38,10 +37,10 @@ All percentages below are **exact numeric accuracy** on the shared 10,000-exampl
 
 | Mode | Overall | Addition | Subtraction |
 | --- | ---: | ---: | ---: |
-| Forward (best @ ep. 19 / max 20) | **97.24%** | 99.12% | 95.36% |
-| Reverse (best @ ep. 23 / max 25) | **99.25%** | 99.44% | 99.06% |
+| Forward (best @ ep. 24 / max 25) | **97.82%** | 99.48% | 96.16% |
+| Reverse (best @ ep. 21 / max 25) | **99.63%** | 99.86% | 99.40% |
 
-Both modes learn addition robustly. The larger Forward gap is on subtraction (−3.76 pp vs addition). Reverse narrows that gap substantially (addition vs subtraction only −0.38 pp) under the longer Reverse schedule.
+Both modes learn addition robustly. The larger Forward gap is on subtraction (−3.32 pp vs addition). Reverse narrows that gap substantially (addition vs subtraction only −0.46 pp). Under the matched schedule, Reverse still leads overall by +1.81 pp, with most of the advantage on subtraction (+3.24 pp).
 
 ### Digit-position performance
 
@@ -51,53 +50,52 @@ Digits are scored on the absolute magnitude of the restored numeric result; a po
 
 | Position | All | Addition | Subtraction |
 | --- | ---: | ---: | ---: |
-| Units | 98.59% (n=10000) | 99.78% | 97.40% |
-| Tens | 98.81% (n=9892) | 99.52% | 98.08% |
-| Hundreds | 99.68% (n=9004) | 99.72% | 99.63% |
-| Thousands | 100.00% (n=2502) | 100.00% | N/A |
-| Subtraction sign | — | — | 99.98% |
-| Negative-result exact | — | — | 96.84% |
+| Units | 98.83% (n=10000) | 99.78% | 97.88% |
+| Tens | 99.16% (n=9892) | 99.72% | 98.59% |
+| Hundreds | 99.80% (n=9002) | 99.94% | 99.63% |
+| Thousands | 100.00% (n=2501) | 100.00% | N/A |
+| Subtraction sign | — | — | 99.96% |
+| Negative-result exact | — | — | 97.40% |
 
 **Reverse**
 
 | Position | All | Addition | Subtraction |
 | --- | ---: | ---: | ---: |
-| Units | 99.93% (n=10000) | 99.94% | 99.92% |
-| Tens | 99.55% (n=9892) | 99.48% | 99.61% |
-| Hundreds | 99.78% (n=9004) | 99.98% | 99.53% |
-| Thousands | 100.00% (n=2502) | 100.00% | N/A |
-| Subtraction sign | — | — | 99.88% |
-| Negative-result exact | — | — | 99.52% |
+| Units | 99.87% (n=10000) | 100.00% | 99.74% |
+| Tens | 99.80% (n=9892) | 99.90% | 99.69% |
+| Hundreds | 99.94% (n=9002) | 99.96% | 99.93% |
+| Thousands | 100.00% (n=2501) | 100.00% | N/A |
+| Subtraction sign | — | — | 99.98% |
+| Negative-result exact | — | — | 99.44% |
 
-Identical position sample sizes across modes confirm evaluation on the same test examples. The clearest direction-linked pattern in these numbers is **units accuracy**, especially for subtraction (Forward 97.40% → Reverse 99.92%). That aligns with the hypothesis that emitting the least-significant digit first better matches column-wise arithmetic. Higher places are already strong in both modes; Reverse’s largest relative lift is at the units place and on negative-result exactness.
+Identical position sample sizes across modes confirm evaluation on the same test examples. The clearest direction-linked pattern remains **units accuracy**, especially for subtraction (Forward 97.88% → Reverse 99.74%). That aligns with the hypothesis that emitting the least-significant digit first better matches column-wise arithmetic. Higher places are already strong in both modes; Reverse’s largest relative lifts are at the units place and on negative-result exactness (97.40% → 99.44%).
 
-### Carry / borrow (Forward only in current export)
+### Carry / borrow (Forward)
 
 | Subset | n | Exact accuracy |
 | --- | ---: | ---: |
-| Addition, no carry | 835 | 98.92% |
-| Addition, with carry | 4165 | 99.16% |
-| Subtraction, no borrow | 800 | 91.62% |
-| Subtraction, with borrow | 4200 | 96.07% |
+| Addition, no carry | 834 | 98.56% |
+| Addition, with carry | 4166 | 99.66% |
+| Subtraction, no borrow | 800 | 90.75% |
+| Subtraction, with borrow | 4200 | 97.19% |
 
-Carry presence does not harm Forward addition. Forward subtraction without borrow is the weakest tabulated subgroup (91.62%). This should **not** be read as “borrow helps learning”: no-borrow and with-borrow groups differ in result magnitude, operand similarity and length. Error inspection suggests many Forward failures are near-cancellations / small-magnitude differences (e.g. `689-689`, `948-944`, `817-819`), which often fall in low-borrow or idiosyncratic cases. Reverse carry/borrow tables are not yet in the Task 2 notebook export and should be produced in `main_report.ipynb` for the final PDF.
+Carry presence does not harm Forward addition. Forward subtraction without borrow is the weakest tabulated subgroup (90.75%). This should **not** be read as “borrow helps learning”: no-borrow and with-borrow groups differ in result magnitude, operand similarity and length. Error inspection suggests many Forward failures are near-cancellations / small-magnitude differences (e.g. `817-819`, `598-592`, `617-614`), which often fall in low-borrow or idiosyncratic cases. Reverse carry/borrow tables are not yet in the Task 2 notebook export and should be produced in `main_report.ipynb` for the final PDF.
 
-### Error patterns (Forward sample)
+### Error patterns
 
-Forward produced 276 / 10,000 exact errors. Recurring themes include: (i) off-by-one or small absolute errors on near-equal subtraction; (ii) occasional place-shift mistakes on addition with carry (e.g. `66+134→190` vs 200); (iii) rare long garbage generations when `[EOS]` is not emitted within the fixed generation budget. Reverse reported 0 malformed numeric parses on the held-out set under the same decode pipeline after restore.
+Forward produced 218 / 10,000 exact errors. Recurring themes include: (i) off-by-one or small absolute errors on near-equal subtraction; (ii) occasional place-value mistakes on otherwise simple differences (e.g. `879-0→979`); (iii) consistent difficulty when the true result is a small positive or negative near zero. Reverse reached 99.63% exact accuracy (≈37 errors) with **0** malformed numeric parses on the held-out set under the same decode pipeline after restore.
 
-### Direction effects — provisional interpretation
+### Direction effects
 
-Under current checkpoints, Reverse outperforms Forward overall (+2.01 pp) and especially on subtraction (+3.70 pp) and units digits. Mechanistically this is consistent with right-to-left algorithmic alignment. However, because Reverse received five extra training epochs, the present gap is **not yet a pure estimate of direction**. The matched-budget validation snapshot (Reverse@20 ≈ Forward@19 on sequence accuracy) suggests that direction may still help, but final claims should use matched schedules.
+Under matched 25-epoch budgets and best-validation selection, Reverse outperforms Forward overall (+1.81 pp) and especially on subtraction (+3.24 pp) and units digits. Mechanistically this is consistent with right-to-left algorithmic alignment. The advantage is not only an artefact of late continuation: at epoch 20, Reverse validation sequence accuracy was already 99.31% versus Forward’s 96.82%, so the direction effect appears early and then persists after both models receive the same additional five epochs.
 
 ---
 
 ## What remains for the final 2-page PDF
 
-1. Lock Forward/Reverse checkpoints under a **matched epoch / selection rule**.  
-2. Reproduce all Task 3 tables/plots from `main_report.ipynb` (including Reverse carry/borrow and shared error analysis).  
-3. Compress this draft: Method ≈ 0.6–0.8 page; Results/analysis ≈ 1.2–1.4 pages; drop notebook implementation detail.  
-4. Keep one clear takeaway: both operations are learnable well above 78%; Reverse appears particularly beneficial for units/subtraction **once training budget is controlled**.
+1. Reproduce all Task 3 tables/plots from `main_report.ipynb` (including Reverse carry/borrow and shared error analysis).  
+2. Compress this draft: Method ≈ 0.6–0.8 page; Results/analysis ≈ 1.2–1.4 pages; drop notebook implementation detail.  
+3. Keep one clear takeaway: both operations are learnable well above 78%; with training budget matched, Reverse remains particularly beneficial for units digits and subtraction.
 
 ---
 
@@ -105,9 +103,11 @@ Under current checkpoints, Reverse outperforms Forward overall (+2.01 pp) and es
 
 | | Forward | Reverse |
 | --- | --- | --- |
-| Max epochs run | 20 | 25 (20 + 5 continuation) |
-| Best val sequence acc | 97.64% @ epoch 19 | 99.37% @ epoch 23 |
-| Val sequence @ epoch 20 | 96.53% (final epoch; best was 19) | 97.38% |
-| Held-out exact | 97.24% | 99.25% |
+| Max epochs run | 25 (20 + 5 continuation) | 25 (20 + 5 continuation) |
+| Best val sequence acc | 97.97% @ epoch 24 | 99.60% @ epoch 21 |
+| Val sequence @ epoch 20 | 96.82% | 99.31% |
+| Held-out exact | 97.82% | 99.63% |
+| Addition / subtraction exact | 99.48% / 96.16% | 99.86% / 99.40% |
+| Exact errors on test | 218 / 10,000 | ≈37 / 10,000 (0 malformed) |
 | LR / batch / optim | 1e-3 / 100 / AdamW | same |
 | Device (export run) | NVIDIA A16-4Q | same |
