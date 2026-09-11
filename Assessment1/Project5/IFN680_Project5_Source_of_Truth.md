@@ -331,6 +331,13 @@ project5_code.zip
 `-- any other files strictly required to reproduce results
 ```
 
+### `project5_common.py`
+
+Purpose:
+- single shared implementation of tokenizer, data helpers, Transformer,
+  batching (`get_batch` + `target_transform`), generation, and evaluation utilities;
+- used by Forward, Reverse, and later `main_report` so implementations cannot drift.
+
 ### `LLMForward.ipynb`
 
 Purpose:
