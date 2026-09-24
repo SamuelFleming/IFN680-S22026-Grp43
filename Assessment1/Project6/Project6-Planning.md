@@ -6,18 +6,21 @@ Project 6 tests the hypothesis that:
 
 > **Adding a discriminator-based loss term to a Conditional Variational Autoencoder (cVAE) improves the sharpness of reconstructed/generated images.**
 
-The project starts from the Topic 8 cVAE tutorial implementation and extends it with a discriminator. The key aim is not to build a completely new generative model, but to run a **controlled comparison** between:
+The work is a **controlled comparison** starting from Topic 8 / Tutorial 8.3:
 
-1. a standard cVAE baseline; and
-2. the same cVAE trained with an additional discriminator/adversarial loss.
+| Task sheet | Role |
+|------------|------|
+| **Task 1** | Train the **control** — standard cVAE baseline |
+| **Task 2** | Train the **treatment** — same cVAE + discriminator loss |
+| **Task 3** | **Compare** both models and judge the hypothesis |
 
-The final outcome should determine whether the discriminator improves sharpness and/or overall image quality, while also considering any trade-offs in reconstruction fidelity, recognisability, consistency, or variety.
+The final outcome should determine whether the discriminator improves sharpness and/or overall image quality, including any trade-offs in reconstruction fidelity, recognisability, consistency, or variety.
 
 ---
 
-# 1. Mental Model of the Task
+# Mental Model
 
-The Topic 8 cVAE follows the general flow:
+## Topic 8 cVAE flow (Tasks 1 & 2 share this)
 
 ```text
 (x, class)
@@ -35,15 +38,24 @@ Decoder(z, class)
 reconstruction / generated image
 ```
 
-The baseline objective is approximately:
+## Loss objectives
+
+**Task 1 (baseline):**
 
 ```text
-CVAE Loss
-= Reconstruction Loss
-+ beta × KL Divergence
+CVAE Loss = Reconstruction Loss + beta × KL Divergence
 ```
 
-Project 6 adds another training signal:
+**Task 2 (modified):**
+
+```text
+Modified CVAE Loss
+= Reconstruction Loss
++ beta × KL Divergence
++ lambda_adv × Adversarial Loss
+```
+
+where the discriminator scores real vs fake (conditioned on class):
 
 ```text
 generated/reconstructed image
@@ -53,117 +65,119 @@ conditional discriminator
 real / fake prediction
 ```
 
-The modified objective therefore becomes conceptually:
+## Experimental framing (Task 3)
 
 ```text
-Modified CVAE Loss
-= Reconstruction Loss
-+ beta × KL Divergence
-+ lambda_adv × Adversarial Loss
-```
-
-The discriminator is trained separately to distinguish:
-
-- real MNIST images; and
-- cVAE-generated/reconstructed images.
-
-The project is therefore best treated as a controlled experiment:
-
-```text
-Baseline CVAE
+Baseline CVAE  (Task 1)
       versus
-CVAE + Discriminator Loss
+CVAE + Discriminator Loss  (Task 2)
         ↓
-same dataset
-same latent size
-same core architecture
-same comparable training conditions
+same dataset, latent size, architecture,
+comparable training conditions
         ↓
 compare sharpness, quality, recognisability,
-consistency, variety and reconstruction behaviour
+consistency, variety, reconstruction behaviour
         ↓
-evaluate the project hypothesis
+evaluate the hypothesis  (Task 3)
 ```
 
 ---
 
-# 2. Required Core Conditions
+# Shared Constraints (all tasks)
 
-The project task defines several important constraints:
+From the task sheet:
 
-- use the supplied `mnist_custom.pt` dataset;
-- train a standard cVAE baseline;
-- use **7 latent dimensions**;
-- train the baseline until convergence;
-- extend the model with a discriminator-based loss;
-- train the modified model with comparable settings;
-- perform conditional generation for all digit classes `0–9`;
-- generate **12 samples per class**;
-- therefore generate **120 images per model**;
-- compare both models visually and quantitatively;
+- dataset: supplied `mnist_custom.pt` (local file: `mnist_custom-1.pt`);
+- latent dimensions: **7**;
+- train each model until convergence / reasonable samples;
+- Task 2 uses **comparable** training settings to Task 1;
+- conditional generation: classes `0–9`, **12 samples per class** → **120 images per model**;
 - submit:
   - `cVAE_DiscriminatorLoss.ipynb`;
-  - `main_report.ipynb`;
-  - any auxiliary files required for reproducibility;
-  - a professional PDF report of at most **2 pages**.
+  - `main_report.ipynb` (+ auxiliary files for reproducibility);
+  - professional PDF report, **max 2 pages**.
+
+**Tutorial starting point:** Week 8 tutorial solution — adapt, do not rewrite from scratch.
+
+Reusable from the tutorial: imports/device setup, MNIST-style loading pattern, conditional encoder/decoder, cVAE wrapper, reparameterisation, recon+KL loss, training loop, conditional generation.
+
+**Overall principle:** change only the presence/absence of the discriminator loss. Keep data, architecture, latent size, and comparable training fixed so Task 3 conclusions are defensible.
 
 ---
 
-# 3. How the Tutorial Solution Is Used
+# Task 1 — Train a baseline VAE
 
-The Week 8 tutorial solution is the main implementation starting point.
+**Task sheet:** Use the modified MNIST dataset and train the standard cVAE from the tutorial until convergence with reasonable samples. Use **7 latent dimensions**. This model is the baseline for comparison.
 
-The reusable components include:
+**Encapsulates:** control model only — data + standard cVAE + train + save. No discriminator. No formal A/B evaluation grids/metrics (those belong in Task 3).
 
-- imports and PyTorch setup;
-- MNIST-style data loading structure;
-- conditional encoder;
-- conditional decoder;
-- cVAE wrapper;
-- reparameterisation logic;
-- reconstruction + KL loss;
-- training loop;
-- GPU/device handling;
-- conditional generation;
-- reconstruction-based evaluation ideas.
+## 1.1 Dataset
 
-The tutorial should be adapted rather than rewritten from scratch.
+- Inspect `mnist_custom.pt` structure before writing the loader.
+- Replace tutorial MNIST loading with this custom file.
+- Build train/test datasets and DataLoaders.
+- Visualise samples as a sanity check.
 
-## Main required tutorial changes
+## 1.2 Architecture (from tutorial)
 
-### Dataset
+- Conditional encoder
+- Conditional decoder
+- cVAE wrapper + reparameterisation
+- Loss: reconstruction + β × KL
+- Set `z_dim = 7`
 
-Replace the normal MNIST loading logic with loading for:
+## 1.3 Training
+
+- Keep the training loop close to the tutorial.
+- Shared hyperparameters with Task 2 where possible: batch size, epochs/convergence criterion, optimiser, learning rate, β, seed.
+- Train until convergence; confirm reasonable conditional samples.
+- Save baseline weights and training history.
+
+## 1.4 Done when
+
+- Baseline trains stably on the custom dataset.
+- Conditional samples look like digits (sanity only).
+- Checkpoint + history saved for Task 3 / `main_report.ipynb`.
+
+---
+
+# Task 2 — Extend the VAE with a discriminator loss
+
+**Task sheet:** Introduce a discriminator-based loss term. Implement a discriminator if needed and adapt training so the extra loss contributes to cVAE optimisation. Train the modified model to convergence on the same dataset with comparable settings.
+
+**Encapsulates:** treatment model — discriminator + adversarial term + alternating training + train + save. Same core cVAE as Task 1. Formal comparison is Task 3.
+
+## 2.1 What stays the same as Task 1
+
+Controlled variables:
+
+- dataset and train/test split;
+- cVAE architecture;
+- latent dimensions = 7;
+- reconstruction loss and KL weighting;
+- batch size, epochs/convergence criterion;
+- cVAE optimiser and learning rate;
+- random seed.
+
+**Experimental variable:** presence of discriminator-based loss.
+
+Discriminator-only settings (its optimiser, `lambda_adv`) are unavoidable — keep simple and document them.
+
+## 2.2 Discriminator
+
+Compact conditional discriminator (e.g. small CNN):
 
 ```text
-mnist_custom.pt
+image features + one-hot class condition
+        ↓
+binary real/fake logit
 ```
 
-The exact contents and structure of this file should be inspected before implementing the loader.
+Suitable loss: `BCEWithLogitsLoss`.
 
-### Latent Size
+## 2.3 Modified training loop
 
-Change the tutorial latent size to:
-
-```python
-z_dim = 7
-```
-
-### Sampling
-
-Generate:
-
-```text
-12 samples × 10 classes = 120 samples
-```
-
-for each model.
-
-### Training
-
-The baseline training loop can remain very close to the tutorial.
-
-The modified training loop requires alternating optimisation:
+Alternating optimisation:
 
 ```text
 for each batch:
@@ -182,323 +196,120 @@ for each batch:
     4. Record losses.
 ```
 
-A compact conditional discriminator can be implemented using a small convolutional network.
+## 2.4 Training and artefacts
 
-A practical discriminator setup is:
+- Train to stable convergence under settings comparable to Task 1.
+- Save modified cVAE weights, discriminator weights, and training histories.
+- Optional quick sanity checks (recon / a few conditional samples) — not the Task 3 evaluation.
 
-```text
-image features
-+
-one-hot class condition
-↓
-binary real/fake prediction
-```
+## 2.5 Done when
 
-A single output logit with `BCEWithLogitsLoss` is a suitable implementation.
+- Discriminator and adversarial cVAE loss are implemented and wired into training.
+- Modified model trains to convergence.
+- Checkpoints + histories saved for Task 3 / `main_report.ipynb`.
 
 ---
 
-# 4. Experimental Design
+# Task 3 — Evaluate and compare models
 
-The experiment should isolate the discriminator loss as closely as possible.
+**Task sheet:** Run inference on both models. Conditionally sample all 10 digit classes, 12 samples each (120 images per model). Visually compare quality, sharpness, consistency, and variety. Quantitatively compare (e.g. FID, Laplacian variance, digit classifier). Analyse whether evidence supports the hypothesis.
 
-## Controlled Variables
+**Encapsulates:** everything that judges the hypothesis — paired recon, 12×10 grids, metrics, analysis. Assumes Tasks 1 and 2 are complete.
 
-Keep the following consistent between the two cVAE variants:
+## 3.1 Reconstruction evaluation
 
-- dataset;
-- train/test split;
-- cVAE architecture;
-- latent dimensions = 7;
-- reconstruction loss;
-- KL weighting;
-- batch size;
-- number of epochs or convergence criterion;
-- cVAE optimiser;
-- learning rate;
-- random seed;
-- evaluation procedure;
-- class conditions;
-- generated sample count.
-
-The intended experimental variable is:
+Same held-out images for both models:
 
 ```text
-presence / absence of discriminator-based loss
+original | baseline recon | discriminator-cVAE recon
 ```
-
-Discriminator-specific settings such as its optimiser and adversarial-loss weighting are unavoidable, but should be kept simple and clearly documented.
-
----
-
-# 5. Evaluation Strategy
-
-The strongest evaluation should include both:
-
-1. **reconstruction evaluation**; and
-2. **conditional generation evaluation**.
-
-## Reconstruction Evaluation
-
-Use the same held-out images for both models.
-
-Compare:
-
-```text
-original
-baseline reconstruction
-adversarial-CVAE reconstruction
-```
-
-This directly addresses the reconstruction/sharpness hypothesis.
 
 Possible measurements:
 
-- reconstruction MSE;
-- Laplacian variance or another sharpness metric;
+- reconstruction MSE (fidelity);
+- Laplacian variance / sharpness;
 - qualitative edge/shape comparison.
 
-## Conditional Generation Evaluation
+## 3.2 Conditional generation evaluation
 
-Generate:
+Required by the task sheet:
 
 ```text
-10 classes × 12 samples = 120 images
+10 classes × 12 samples = 120 images per model
 ```
 
-for each model.
-
-Use the same latent vectors and class labels for both models wherever practical. This gives a more controlled visual comparison.
-
-For example:
+Prefer **fixed latents** for a fair visual comparison:
 
 ```python
-fixed_z = torch.randn(12, 7)
+fixed_z = torch.randn(12, 7)  # reuse across classes 0–9 and both models
 ```
 
-Then reuse the same latent vectors for classes `0–9` across both decoders.
+Produce the **12 × 10 grids** for baseline and modified models (required in `main_report.ipynb`).
 
-## Recommended Metrics
+## 3.3 Recommended metrics
 
-### 1. Laplacian Variance
+| Metric | Role |
+|--------|------|
+| **Laplacian variance** | Primary sharpness metric (matches the hypothesis) |
+| **Reconstruction MSE** | Detect sharpness–fidelity trade-offs |
+| **Digit classifier accuracy/confidence** | Optional recognisability check |
+| **Visual inspection** | Sharpness, consistency, variety, artefacts |
+| **FID** | Optional; less ideal as primary metric on small grayscale MNIST |
 
-Primary sharpness metric.
+## 3.4 Analysis (feeds the report Discussion)
 
-Useful because the project hypothesis specifically concerns sharpness.
+- Did sharpness improve?
+- Did reconstruction fidelity / recognisability / variety change?
+- Limitations and confounding factors
+- Does the evidence support the hypothesis?
 
-### 2. Reconstruction MSE
+## 3.5 Done when
 
-Measures fidelity to the original image.
-
-This helps identify whether increased sharpness comes at the expense of reconstruction accuracy.
-
-### 3. Digit Classifier Accuracy / Confidence
-
-Optional but useful.
-
-A small standalone digit classifier can test whether generated digits are still recognisable as the requested class.
-
-### 4. Visual Evaluation
-
-Compare:
-
-- sharpness;
-- consistency;
-- variety;
-- recognisability;
-- malformed digits;
-- visual artefacts.
-
-FID is possible but is not necessarily the best primary metric for small grayscale MNIST images. The simpler metrics above directly address the project hypothesis and are easier to interpret.
+- Both 120-image grids exist and are reproducible.
+- Quantitative metrics are computed for both models.
+- Results are ready to paste into the PDF Discussion and to reproduce in `main_report.ipynb`.
 
 ---
 
-# 6. Proposed `cVAE_DiscriminatorLoss.ipynb`
+# Deliverables (map to tasks)
 
-This notebook should contain the complete model implementation and training process.
+## `cVAE_DiscriminatorLoss.ipynb`
 
-## Suggested Notebook Structure
+Full implementation and training. Natural section order:
 
-### Cell 1 — Markdown
-Project title, hypothesis and notebook purpose.
+1. Setup + dataset → **Task 1 start**
+2. Baseline cVAE architecture + train + save → **Task 1**
+3. Discriminator + modified loop + train + save → **Task 2**
+4. Light training-curve / sanity plots (optional bridge into Task 3)
 
-### Cell 2 — Code
-Imports.
+### Suggested cell outline
 
-### Cell 3 — Code
-Random seeds and device/GPU setup.
+| Cells | Content | Task |
+|-------|---------|------|
+| 1–3 | Title, imports, seeds/device | shared |
+| 4–7 | Dataset load, loaders, viz | Task 1 |
+| 8–13 | Encoder, decoder, cVAE, recon+KL, hyperparameters (`z_dim=7`) | Task 1 |
+| 14–17 | Baseline train + save | Task 1 |
+| 18–23 | Discriminator, adv losses, alternating train + save | Task 2 |
+| 24–28 | Training curves, quick sanity checks, final artefacts | Task 2 → Task 3 prep |
 
-### Cell 4 — Markdown
-Dataset section.
+## `main_report.ipynb`
 
-### Cell 5 — Code
-Load and inspect `mnist_custom.pt`.
+Reproduces every report result. Predominantly **Task 3**, loading Task 1/2 artefacts.
 
-### Cell 6 — Code
-Construct training/test datasets and DataLoaders.
+### Suggested cell outline
 
-### Cell 7 — Code
-Dataset visualisation / sanity check.
+| Cells | Content | Task |
+|-------|---------|------|
+| 1–6 | Setup, model defs, load checkpoints + test data | load Task 1 & 2 |
+| 7–8 | Training histories / loss plots | supporting |
+| 9–12 | Paired reconstructions + MSE/sharpness | Task 3 |
+| 13–18 | Fixed latents, both 12×10 grids | Task 3 |
+| 19–24 | Quantitative tables, final figures, short summary | Task 3 |
 
-### Cell 8 — Markdown
-Baseline cVAE architecture.
+**Rule:** if it appears in the PDF, a cell in `main_report.ipynb` must reproduce it. Notebook must run end-to-end in the IFN680 environment.
 
-### Cell 9 — Code
-Conditional encoder.
-
-### Cell 10 — Code
-Conditional decoder.
-
-### Cell 11 — Code
-cVAE class and reparameterisation.
-
-### Cell 12 — Code
-Baseline reconstruction + KL loss.
-
-### Cell 13 — Code
-Hyperparameters and model configuration:
-- latent size = 7;
-- beta;
-- batch size;
-- learning rate;
-- epochs.
-
-### Cell 14 — Markdown
-Baseline training.
-
-### Cell 15 — Code
-Reusable baseline training/evaluation functions.
-
-### Cell 16 — Code
-Train baseline model and record history.
-
-### Cell 17 — Code
-Save baseline weights and training history.
-
-### Cell 18 — Markdown
-Discriminator extension.
-
-### Cell 19 — Code
-Conditional discriminator model.
-
-### Cell 20 — Code
-Discriminator/adversarial loss functions.
-
-### Cell 21 — Code
-Modified alternating cVAE/discriminator training loop.
-
-### Cell 22 — Code
-Train modified model and record histories.
-
-### Cell 23 — Code
-Save modified cVAE/discriminator weights and histories.
-
-### Cell 24 — Markdown
-Training comparison.
-
-### Cell 25 — Code
-Plot baseline and modified training curves.
-
-### Cell 26 — Code
-Quick reconstruction sanity check.
-
-### Cell 27 — Code
-Quick conditional-generation sanity check.
-
-### Cell 28 — Markdown / Code
-Save final reusable artefacts.
-
----
-
-# 7. Proposed `main_report.ipynb`
-
-This notebook should reproduce every result included in the PDF report.
-
-It should be kept simpler and more deterministic than the training notebook.
-
-## Suggested Notebook Structure
-
-### Cell 1 — Markdown
-Project/result notebook purpose.
-
-### Cell 2 — Code
-Imports, deterministic seeds and device setup.
-
-### Cell 3 — Code
-Constants and file paths.
-
-### Cell 4 — Code
-Model class definitions required for loading weights.
-
-### Cell 5 — Code
-Load baseline and modified model checkpoints.
-
-### Cell 6 — Code
-Load test dataset.
-
-### Cell 7 — Markdown
-Training results.
-
-### Cell 8 — Code
-Load training histories and reproduce loss plots.
-
-### Cell 9 — Markdown
-Reconstruction evaluation.
-
-### Cell 10 — Code
-Generate paired held-out reconstructions.
-
-### Cell 11 — Code
-Compute reconstruction MSE and sharpness metrics.
-
-### Cell 12 — Code
-Create reconstruction comparison figure.
-
-### Cell 13 — Markdown
-Conditional generation.
-
-### Cell 14 — Code
-Create/load fixed latent vectors.
-
-### Cell 15 — Code
-Generate 120 baseline samples.
-
-### Cell 16 — Code
-Plot baseline 12 × 10 digit grid.
-
-### Cell 17 — Code
-Generate 120 discriminator-model samples.
-
-### Cell 18 — Code
-Plot modified-model 12 × 10 digit grid.
-
-### Cell 19 — Markdown
-Quantitative generation evaluation.
-
-### Cell 20 — Code
-Compute sharpness statistics.
-
-### Cell 21 — Code
-Compute classifier-based recognisability results, if used.
-
-### Cell 22 — Code
-Produce final results table.
-
-### Cell 23 — Code
-Reproduce any final report figure.
-
-### Cell 24 — Markdown
-Short summary of reproduced results.
-
-## Main Rule
-
-If a number, graph, table or qualitative result appears in the final PDF report, there should be a clearly identifiable cell in `main_report.ipynb` that reproduces it.
-
----
-
-# 8. Auxiliary Submission Files
-
-The final ZIP will likely contain something similar to:
+## Auxiliary files (typical)
 
 ```text
 project6_code.zip
@@ -506,194 +317,47 @@ project6_code.zip
 ├── cVAE_DiscriminatorLoss.ipynb
 ├── main_report.ipynb
 │
-├── baseline_cvae.pt
-├── discriminator_cvae.pt
-├── discriminator.pt
+├── baseline_cvae.pt              # Task 1
+├── discriminator_cvae.pt         # Task 2
+├── discriminator.pt              # Task 2
 │
 ├── training_history.pt
-├── evaluation_latents.pt
-└── digit_classifier.pt        # only if used
+├── evaluation_latents.pt         # Task 3
+└── digit_classifier.pt           # Task 3, if used
 ```
 
-Prefer saving PyTorch `state_dict`s rather than complete serialised model objects.
+Prefer `state_dict`s. Prefer deterministic regeneration of images over storing large image dumps.
 
-Avoid saving unnecessary generated images if they can be deterministically reproduced by `main_report.ipynb`.
+## PDF report (max 2 pages)
+
+| Section | Draws mainly from |
+|---------|-------------------|
+| Introduction | Hypothesis + literature |
+| Methodology | Tasks 1 & 2 setup |
+| Experiments | Task 3 protocol |
+| Discussion | Task 3 results + hypothesis judgement |
+| Conclusion | 2–3 sentences |
 
 ---
 
-# 9. Report Plan
+# Execution Sequence
 
-The report has a maximum length of **2 pages** and should remain concise.
+## Stage A — Task 1
+1. Inspect dataset; build loaders.
+2. Port tutorial cVAE; set `z_dim = 7`.
+3. Train baseline to convergence; save checkpoint + history.
 
-Required sections:
+## Stage B — Task 2
+4. Implement conditional discriminator + losses.
+5. Implement alternating training.
+6. Train modified model; save checkpoints + histories.
 
-1. Introduction
-2. Methodology
-3. Experiments
-4. Discussion
-5. Conclusion
+## Stage C — Task 3
+7. Fixed evaluation latents; paired reconstructions.
+8. Both 120-image (12×10) grids.
+9. Quantitative metrics + analysis.
 
-## Introduction
-
-Briefly:
-
-- state the hypothesis;
-- explain why ordinary reconstruction loss may lead to smooth/blurred output;
-- explain why discriminator pressure may improve perceptual sharpness;
-- cite relevant literature investigating similar approaches.
-
-## Methodology
-
-Describe:
-
-- custom MNIST dataset;
-- baseline cVAE;
-- 7-dimensional latent space;
-- reconstruction + KL objective;
-- conditional discriminator;
-- adversarial loss;
-- training controls.
-
-Keep architecture explanation compact.
-
-## Experiments
-
-Describe:
-
-- paired reconstruction experiment;
-- conditional sampling;
-- 12 samples per digit;
-- 120 samples per model;
-- fixed latent vectors;
-- selected quantitative metrics.
-
-## Discussion
-
-This should contain most of the evidence.
-
-Include:
-
-- key quantitative results;
-- qualitative visual results;
-- whether sharpness improved;
-- whether reconstruction fidelity changed;
-- whether recognisability or variety changed;
-- limitations;
-- whether results support the hypothesis.
-
-## Conclusion
-
-Use only 2–3 sentences.
-
-State the main experimental finding and, if useful, one possible future improvement or follow-up experiment.
-
----
-
-# 10. Relevant Topic 8 Concepts
-
-Only a subset of Topic 8 needs to remain central to this project:
-
-```text
-Conditional VAE
-    ↓
-encoder / decoder
-    ↓
-mu and log-variance
-    ↓
-reparameterisation
-    ↓
-latent z
-    ↓
-reconstruction loss
-+
-KL divergence
-    ↓
-conditional generation
-```
-
-Project 6 extends this with:
-
-```text
-generated / reconstructed image
-    ↓
-conditional discriminator
-    ↓
-adversarial training signal
-```
-
-The project therefore builds directly on the Topic 8 tutorial rather than requiring a completely separate architecture.
-
----
-
-# 11. Planned Execution Sequence
-
-## Stage 1 — Dataset Inspection
-
-- inspect `mnist_custom.pt`;
-- determine its exact structure;
-- build the correct data-loading pipeline;
-- visualise samples.
-
-## Stage 2 — Baseline cVAE
-
-- port the tutorial cVAE;
-- change latent size to 7;
-- train until convergence;
-- confirm reasonable conditional samples;
-- save checkpoint and history.
-
-## Stage 3 — Discriminator Extension
-
-- implement a conditional discriminator;
-- implement discriminator loss;
-- implement adversarial cVAE loss;
-- implement alternating training;
-- train to stable convergence;
-- save checkpoints and histories.
-
-## Stage 4 — Evaluation
-
-- freeze model settings;
-- create fixed evaluation latent vectors;
-- generate paired reconstructions;
-- generate both required 120-image grids;
-- calculate quantitative metrics;
-- create final plots and tables.
-
-## Stage 5 — Reproducibility Notebook
-
-- build `main_report.ipynb`;
-- load saved checkpoints;
-- reproduce every report result;
-- verify all cells run successfully in sequence.
-
-## Stage 6 — Report
-
-- perform targeted literature search;
-- write the two-page report;
-- include only the most informative figures/results;
-- ensure conclusions follow directly from the experiment.
-
----
-
-# 12. Overall Project Principle
-
-The project should remain a **small, controlled experimental extension of the Topic 8 tutorial**.
-
-The most important discipline is to avoid changing multiple things at once.
-
-The core comparison should remain:
-
-```text
-same cVAE
-same data
-same latent size
-same comparable training setup
-
-versus
-
-same cVAE
-+ discriminator-based loss
-```
-
-This makes the final conclusion about the discriminator term much easier to justify.
+## Stage D — Submission polish
+10. Build `main_report.ipynb`; verify sequential run.
+11. Write 2-page report from Task 3 evidence.
+12. Package `project6_code.zip`.
